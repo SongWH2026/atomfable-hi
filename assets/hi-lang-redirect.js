@@ -10,6 +10,42 @@
   function goEn() {
     if (isZhPath) location.replace("/" + tail);
   }
+  function saveLang(lang) {
+    try {
+      localStorage.setItem(LANG_KEY, lang);
+    } catch (_) {}
+  }
+
+  const from = new URLSearchParams(location.search).get("from");
+
+  // 主站带 from= 时优先（覆盖之前手动切换记住的语言）
+  if (from === "main-zh") {
+    saveLang("zh");
+    goZh();
+    return;
+  }
+  if (from === "main-en") {
+    saveLang("en");
+    goEn();
+    return;
+  }
+
+  try {
+    const ref = document.referrer;
+    if (ref) {
+      const u = new URL(ref);
+      if (u.hostname.replace(/^www\./, "") === "atomfable.com") {
+        if (u.pathname.startsWith("/zh")) {
+          saveLang("zh");
+          goZh();
+          return;
+        }
+        saveLang("en");
+        goEn();
+        return;
+      }
+    }
+  } catch (_) {}
 
   let saved;
   try {
@@ -25,45 +61,6 @@
     return;
   }
 
-  const from = new URLSearchParams(location.search).get("from");
-  if (from === "main-zh") {
-    try {
-      localStorage.setItem(LANG_KEY, "zh");
-    } catch (_) {}
-    goZh();
-    return;
-  }
-  if (from === "main-en") {
-    try {
-      localStorage.setItem(LANG_KEY, "en");
-    } catch (_) {}
-    goEn();
-    return;
-  }
-
-  try {
-    const ref = document.referrer;
-    if (ref) {
-      const u = new URL(ref);
-      if (u.hostname.replace(/^www\./, "") === "atomfable.com") {
-        if (u.pathname.startsWith("/zh")) {
-          try {
-            localStorage.setItem(LANG_KEY, "zh");
-          } catch (_) {}
-          goZh();
-          return;
-        }
-        try {
-          localStorage.setItem(LANG_KEY, "en");
-        } catch (_) {}
-        goEn();
-        return;
-      }
-    }
-  } catch (_) {}
-
-  try {
-    localStorage.setItem(LANG_KEY, "en");
-  } catch (_) {}
+  saveLang("en");
   goEn();
 })();
