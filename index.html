@@ -716,6 +716,8 @@
           console.error("GET /api/messages failed", res.status, data);
           if (data.error === "server_not_configured") {
             showToast("后端未配置：请在 Vercel 填 Supabase 环境变量");
+          } else if (data.error === "wrong_key_role") {
+            showToast("误用了 anon 密钥，请改 service_role");
           } else if (data.hint) {
             showToast(data.hint);
           } else {
@@ -857,6 +859,8 @@
             showToast("人机验证未通过");
           } else if (data.error === "server_not_configured") {
             showToast("后端未配置，请联系站长");
+          } else if (data.error === "wrong_key_role") {
+            showToast("误用了 anon 密钥，请改 service_role");
           } else if (data.hint) {
             showToast(data.hint);
           } else if (data.error === "insert_failed") {

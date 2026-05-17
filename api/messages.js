@@ -8,6 +8,19 @@ function json(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
+function jwtRole(key) {
+  try {
+    const parts = key.split(".");
+    if (parts.length < 2) return null;
+    let payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    while (payload.length % 4) payload += "=";
+    const json = JSON.parse(Buffer.from(payload, "base64").toString("utf8"));
+    return json.role || null;
+  } catch {
+    return null;
+  }
+}
+
 function getSupabaseConfig() {
   const url = (process.env.SUPABASE_URL || "").trim();
   const key = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
@@ -28,7 +41,7 @@ function supabaseErrorHint(data) {
     return "密钥无效，请用 Legacy 的 service_role（eyJ 开头）";
   }
   if (/permission denied/i.test(msg)) {
-    return "数据库权限不足，请检查 service_role 密钥";
+    return "权限不足：请确认 Vercel 填的是 service_role（不是 anon），并在 Supabase 执行 fix-permissions.sql";
   }
   return msg.slice(0, 120) || "数据库写入失败";
 }
@@ -158,6 +171,15 @@ module.exports = async function handler(req, res) {
   const config = getSupabaseConfig();
   if (!config) {
     json(res, 503, { error: "server_not_configured" });
+    return;
+  }
+
+  const keyRole = jwtRole(config.key);
+  if (keyRole === "anon") {
+    json(res, 503, {
+      error: "wrong_key_role",
+      hint: "Vercel 里误填了 anon 公钥，请改为 Legacy 的 service_role secret",
+    });
     return;
   }
 

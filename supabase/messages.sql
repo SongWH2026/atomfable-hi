@@ -19,4 +19,7 @@ create index if not exists hi_messages_client_token_created_idx
 
 alter table public.hi_messages enable row level security;
 
--- 不创建 anon 策略：浏览器不能直接读写表，只走 Vercel API（service_role）
+-- service_role 走 Vercel API；授予序列权限避免 INSERT 报 permission denied
+grant usage on schema public to postgres, service_role;
+grant all on table public.hi_messages to postgres, service_role;
+grant usage, select on sequence public.hi_messages_id_seq to postgres, service_role;
