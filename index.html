@@ -418,6 +418,20 @@
       font-size: 0.875rem;
     }
     .stream-empty.is-visible { display: block; }
+    .stream-loading {
+      text-align: center;
+      padding: 1.5rem 1rem;
+      font-weight: 700;
+      color: #9ca3af;
+      font-size: 0.875rem;
+    }
+    .stream-loading.hidden { display: none; }
+    .btn-send:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: 4px 4px 0 #111827;
+    }
   </style>
 </head>
 <body class="h-[100dvh] flex flex-col overflow-hidden m-0">
@@ -434,7 +448,6 @@
         </span>
       </a>
       <div class="flex items-center gap-2 sm:gap-3 shrink-0">
-        <span class="preview-badge hidden sm:inline">UI 预览</span>
         <a href="https://atomfable.com/zh/" class="btn-comic-link">← 主站</a>
       </div>
     </div>
@@ -442,6 +455,7 @@
 
   <main class="chat-layout flex-1 min-h-0">
     <div id="chat-scroll" class="chat-scroll chat-shell" tabindex="-1">
+      <p class="stream-loading hidden" id="stream-loading">加载留言中…</p>
       <p class="stream-empty" id="stream-empty">Hi 广场还空着，来抢第一条吧。</p>
       <div id="msg-stream" role="log" aria-live="polite" aria-relevant="additions"></div>
     </div>
@@ -472,14 +486,14 @@
               rows="2"
               maxlength="500"
               required
-              placeholder="提意见、灌水、闲聊都行～说说你想玩的工具，或给主站 / Hi 广场提个想法（演示版刷新会丢）"
+              placeholder="提意见、灌水、闲聊都行～说说你想玩的工具，或给主站 / Hi 广场提个想法"
               class="compose-input"
             ></textarea>
-            <button type="submit" class="btn-send" aria-label="说两句">说两句</button>
+            <button type="submit" class="btn-send" id="btn-send" aria-label="说两句">说两句</button>
           </div>
           <div class="compose-meta">
             <span><span id="char-count">0</span> / 500</span>
-            <span>演示版 · 刷新页面会丢</span>
+            <span id="compose-status">留言会保存在云端</span>
           </div>
         </form>
       </div>
@@ -497,23 +511,15 @@
     };
     const ENTRY_SOURCE_KEY = "hi-entry-source";
 
-    const SAMPLE_MESSAGES = [
-      { floor: 1, nick: "AtomFable", admin: true, mine: false, content: "【站长】一楼留给官方：正式开门后会删掉这些假数据。", time: "5/13 00:00" },
-      { floor: 2, nick: "工具人", admin: false, mine: false, source: { label: "Base64 工具", url: "https://base64.atomfable.com/" }, content: "Base64 那个工具好用，收藏了。期待更多沙雕小工具。", time: "5/14 09:45" },
-      { floor: 3, nick: "老网民", admin: false, mine: false, content: "左右分边这种布局顺眼，像聊天又不像微信那种绿泡泡。", time: "5/15 12:30" },
-      { floor: 4, nick: "AtomFable", admin: true, mine: false, content: "【站长】Hi 广场 UI 按主站风格重做了，后端还没接。欢迎催更。", time: "5/16 18:00" },
-      { floor: 5, nick: "路过网友", admin: false, mine: false, content: "匿名测试一条，应该在左边。", time: "昨天 21:03" },
-      { floor: 6, nick: "深夜打工人", admin: false, mine: false, source: { label: "主站", url: "https://atomfable.com/zh/" }, content: "主站那个会跑的 e 太魔性了……", time: "昨天 02:14" },
-      { floor: 7, nick: "路过的热心网友520", admin: false, mine: true, source: { label: "主站", url: "https://atomfable.com/zh/" }, content: "演示：从主站点过来会显示「来自 主站」链接。", time: "刚刚" },
-    ];
-
-    let messages = [...SAMPLE_MESSAGES];
-    let nextFloor = 8;
+    let messages = [];
+    let isPosting = false;
 
     const chatScroll = document.getElementById("chat-scroll");
     const msgStream = document.getElementById("msg-stream");
     const msgTotal = document.getElementById("msg-total");
+    const streamLoading = document.getElementById("stream-loading");
     const streamEmpty = document.getElementById("stream-empty");
+    const btnSend = document.getElementById("btn-send");
     const form = document.getElementById("guestbook-form");
     const contentEl = document.getElementById("content");
     const charCount = document.getElementById("char-count");
@@ -524,7 +530,10 @@
     const entrySourceHint = document.getElementById("entry-source-hint");
     const NICK_PREFIX = "路过的热心网友";
     const NICK_STORAGE_KEY = "hi-display-nick";
+    const CLIENT_TOKEN_KEY = "hi-client-token";
+    const API_MESSAGES = "/api/messages";
     let toastTimer;
+    let myClientToken = "";
 
     function resolveSourceFromCode(code) {
       const key = (code || "").trim().toLowerCase();
@@ -650,9 +659,78 @@
         .replace(/"/g, "&quot;");
     }
 
-    function formatNow() {
-      const d = new Date();
-      return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    function formatMessageTime(iso) {
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return "";
+      const now = new Date();
+      const sameDay =
+        d.getFullYear() === now.getFullYear() &&
+        d.getMonth() === now.getMonth() &&
+        d.getDate() === now.getDate();
+      const hm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+      if (sameDay) return hm;
+      return `${d.getMonth() + 1}/${d.getDate()} ${hm}`;
+    }
+
+    function getClientToken() {
+      try {
+        let token = localStorage.getItem(CLIENT_TOKEN_KEY);
+        if (
+          token &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(token)
+        ) {
+          return token;
+        }
+        token = crypto.randomUUID();
+        localStorage.setItem(CLIENT_TOKEN_KEY, token);
+        return token;
+      } catch (_) {
+        return "";
+      }
+    }
+
+    function mapApiMessage(row) {
+      const token = myClientToken || getClientToken();
+      myClientToken = token;
+      const source =
+        row.source_label && row.source_url
+          ? { label: row.source_label, url: row.source_url }
+          : null;
+      return {
+        floor: row.id,
+        nick: row.nick,
+        admin: Boolean(row.is_admin),
+        mine: Boolean(token && row.client_token && row.client_token === token),
+        content: row.content,
+        time: formatMessageTime(row.created_at),
+        source,
+      };
+    }
+
+    async function loadMessages() {
+      streamLoading.classList.remove("hidden");
+      try {
+        const res = await fetch(API_MESSAGES);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (data.error === "server_not_configured") {
+            showToast("后端未配置：请在 Vercel 填 Supabase 环境变量");
+          } else {
+            showToast("加载失败，稍后再试");
+          }
+          messages = [];
+          renderMessages(messages);
+          return;
+        }
+        messages = (data.messages || []).map(mapApiMessage);
+        renderMessages(messages);
+      } catch (_) {
+        showToast("网络异常，加载失败");
+        messages = [];
+        renderMessages(messages);
+      } finally {
+        streamLoading.classList.add("hidden");
+      }
     }
 
     function scrollToBottom(smooth) {
@@ -726,7 +804,8 @@
       updateEntrySourceHint();
     })();
 
-    renderMessages(messages);
+    myClientToken = getClientToken();
+    loadMessages();
 
     contentEl.addEventListener("input", () => {
       charCount.textContent = String(contentEl.value.length);
@@ -740,36 +819,68 @@
       }
     });
 
-    form.addEventListener("submit", (e) => {
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
+      if (isPosting) return;
       const text = contentEl.value.trim();
       if (!text) {
         showToast("先写点内容");
         contentEl.focus();
         return;
       }
-      const msg = {
-        floor: nextFloor++,
+      const source = getCurrentSource();
+      const payload = {
         nick: getSendNick(),
-        admin: false,
-        mine: true,
         content: text,
-        time: formatNow(),
-        source: getCurrentSource() || undefined,
+        client_token: myClientToken || getClientToken(),
+        source_label: source ? source.label : null,
+        source_url: source ? source.url : null,
       };
-      messages = [...messages, msg];
-      renderMessages(messages);
-      contentEl.value = "";
-      charCount.textContent = "0";
-      contentEl.style.height = "";
-      autoGrowTextarea();
-      scrollToBottom(true);
-      showToast("已发到 Hi 广场（演示版，刷新会丢）");
+
+      isPosting = true;
+      btnSend.disabled = true;
+      try {
+        const res = await fetch(API_MESSAGES, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (data.error === "rate_limited") {
+            showToast("发太快了，稍后再试");
+          } else if (data.error === "turnstile_failed") {
+            showToast("人机验证未通过");
+          } else if (data.error === "server_not_configured") {
+            showToast("后端未配置，请联系站长");
+          } else {
+            showToast("发送失败，稍后再试");
+          }
+          return;
+        }
+        const row = data.message;
+        if (row) {
+          messages = [...messages, mapApiMessage(row)];
+          renderMessages(messages);
+        } else {
+          await loadMessages();
+        }
+        contentEl.value = "";
+        charCount.textContent = "0";
+        contentEl.style.height = "";
+        autoGrowTextarea();
+        scrollToBottom(true);
+        showToast("已发到 Hi 广场");
+      } catch (_) {
+        showToast("网络异常，发送失败");
+      } finally {
+        isPosting = false;
+        btnSend.disabled = false;
+      }
     });
 
     window.addEventListener("load", () => {
       autoGrowTextarea();
-      scrollToBottom(false);
     });
   </script>
 </body>
