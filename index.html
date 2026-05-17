@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AtomFable Hi — 留言墙筹备中</title>
+  <meta name="description" content="AtomFable 留言墙：想说啥说啥，匿名也行。站点搭建中，敬请期待。" />
+  <link rel="canonical" href="https://hi.atomfable.com/" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style type="text/tailwindcss">
+    body {
+      background-color: #fcfbf9;
+      color: #111827;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      min-height: 100vh;
+    }
+    .comic-border {
+      border: 4px solid #111827 !important;
+      box-shadow: 6px 6px 0 #111827 !important;
+      border-radius: 4px !important;
+      background: #fff;
+    }
+    .brand-mark {
+      background: #fff !important;
+    }
+    .panel-tag {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #ea580c;
+      margin-bottom: 0.75rem;
+    }
+    .hero-lead {
+      font-weight: 800;
+      color: #111827;
+      font-size: 1.35rem;
+      line-height: 1.45;
+    }
+    .hero-follow {
+      margin-top: 0.65rem;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #6b7280;
+      line-height: 1.55;
+    }
+    .lang-switch a {
+      text-decoration: none;
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: #6b7280;
+    }
+    .lang-switch a:hover,
+    .lang-switch a.is-active {
+      color: #ea580c;
+    }
+    .btn-home {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      padding: 0.65rem 1.15rem;
+      font-size: 0.875rem;
+      font-weight: 800;
+      text-decoration: none;
+      color: #111827;
+      background: #fff;
+      transition: transform 0.1s, box-shadow 0.1s, background 0.15s;
+    }
+    .btn-home:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 8px 8px 0 #ea580c !important;
+      background: #fff7ed;
+    }
+    .btn-home-primary {
+      background: #f97316;
+      color: #fff;
+    }
+    .btn-home-primary:hover {
+      background: #ea580c;
+      color: #fff;
+    }
+    [data-lang="en"] { display: none; }
+    html.lang-en [data-lang="zh"] { display: none; }
+    html.lang-en [data-lang="en"] { display: block; }
+    html.lang-en span[data-lang="en"] { display: inline; }
+    html.lang-en .flex-row[data-lang="en"] { display: flex; }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+  <header class="bg-white border-b-4 border-gray-900">
+    <div class="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+      <a href="https://atomfable.com/" class="flex items-center gap-2.5 text-xl font-black tracking-tight text-inherit no-underline shrink-0">
+        <span class="brand-mark w-10 h-10 comic-border flex items-center justify-center shrink-0" aria-hidden="true"></span>
+        <span>AtomFable <span class="text-orange-600">Hi</span></span>
+      </a>
+      <nav class="lang-switch flex items-center gap-2 shrink-0" aria-label="Language">
+        <a href="#" id="lang-zh" class="is-active" lang="zh-CN">中文</a>
+        <span class="text-gray-300" aria-hidden="true">|</span>
+        <a href="#" id="lang-en" lang="en">EN</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="flex-1 flex items-center justify-center px-4 py-12">
+    <div class="comic-border max-w-lg w-full p-8 md:p-10 text-center">
+      <p class="panel-tag" data-lang="zh">交个朋友 · 第 4 格</p>
+      <p class="panel-tag" data-lang="en">Say hi · Panel 4</p>
+
+      <h1 class="text-2xl md:text-3xl font-black tracking-tight text-gray-900" data-lang="zh">留言墙马上开门</h1>
+      <h1 class="text-2xl md:text-3xl font-black tracking-tight text-gray-900" data-lang="en">Message wall opening soon</h1>
+
+      <p class="hero-lead mt-4" data-lang="zh">想说啥说啥，匿名也行。</p>
+      <p class="hero-lead mt-4" data-lang="en">Say whatever you like. Stay anonymous if you want.</p>
+
+      <p class="hero-follow" data-lang="zh">— 我在搭一个轻量留言墙：发帖、回复、防刷。上线后从这里开聊。</p>
+      <p class="hero-follow" data-lang="en">— I am building a simple wall: posts, replies, and basic anti-spam. Chat starts here when it is live.</p>
+
+      <div class="mt-8 flex flex-col sm:flex-row flex-wrap items-center justify-center gap-3">
+        <a href="https://atomfable.com/zh/" class="btn-home comic-border" data-lang="zh">← 回中文主页</a>
+        <a href="https://atomfable.com/" class="btn-home comic-border" data-lang="en">← Main site (EN)</a>
+        <a href="https://atomfable.com/" class="btn-home comic-border btn-home-primary" data-lang="zh">去 AtomFable 用工具</a>
+        <a href="https://atomfable.com/" class="btn-home comic-border btn-home-primary" data-lang="en">Use AtomFable tools</a>
+      </div>
+    </div>
+  </main>
+
+  <footer class="border-t-4 border-gray-900 bg-white py-5 text-center text-xs font-bold text-gray-500 px-4">
+    <p data-lang="zh">© AtomFable Hi · 筹备中 · <a href="https://atomfable.com/zh/" class="text-orange-600 underline-offset-2 hover:underline">atomfable.com</a></p>
+    <p data-lang="en">© AtomFable Hi · Coming soon · <a href="https://atomfable.com/" class="text-orange-600 underline-offset-2 hover:underline">atomfable.com</a></p>
+  </footer>
+
+  <script>
+    const root = document.documentElement;
+    const langZh = document.getElementById('lang-zh');
+    const langEn = document.getElementById('lang-en');
+
+    function setLang(lang) {
+      const isEn = lang === 'en';
+      root.classList.toggle('lang-en', isEn);
+      root.lang = isEn ? 'en' : 'zh-CN';
+      langZh.classList.toggle('is-active', !isEn);
+      langEn.classList.toggle('is-active', isEn);
+      try { localStorage.setItem('hi-lang', lang); } catch (_) {}
+    }
+
+    langZh.addEventListener('click', (e) => { e.preventDefault(); setLang('zh'); });
+    langEn.addEventListener('click', (e) => { e.preventDefault(); setLang('en'); });
+
+    try {
+      const saved = localStorage.getItem('hi-lang');
+      if (saved === 'en' || saved === 'zh') setLang(saved);
+      else if ((navigator.language || '').toLowerCase().startsWith('zh')) setLang('zh');
+      else setLang('en');
+    } catch (_) {
+      setLang('zh');
+    }
+  </script>
+</body>
+</html>
