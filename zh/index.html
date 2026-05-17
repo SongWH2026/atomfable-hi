@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AtomFable Hi — Hi Plaza</title>
-  <meta name="description" content="AtomFable Hi Plaza — feedback, chatter, and tool ideas. Say hi; nicknames are optional." />
-  <link rel="canonical" href="https://hi.atomfable.com/" />
+  <title>AtomFable Hi — Hi 广场</title>
+  <meta name="description" content="AtomFable Hi 广场：提意见、灌水、闲聊都行。想说啥说啥，匿名也行。当前为 UI 预览。" />
+  <link rel="canonical" href="https://hi.atomfable.com/zh/" />
   <link rel="alternate" hreflang="en" href="https://hi.atomfable.com/" />
   <link rel="alternate" hreflang="zh-CN" href="https://hi.atomfable.com/zh/" />
   <link rel="alternate" hreflang="x-default" href="https://hi.atomfable.com/" />
@@ -18,7 +18,7 @@
     body {
       background-color: #fcfbf9;
       color: #111827;
-      font-family: "Noto Sans SC", system-ui, -apple-system, "Segoe UI", sans-serif;
+      font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
       -webkit-font-smoothing: antialiased;
     }
     .site-shell-wide {
@@ -506,42 +506,42 @@
 
   <header class="bg-white border-b-4 border-gray-900 shrink-0 z-50">
     <div class="site-shell-wide header-bar flex items-center justify-between gap-3">
-      <a href="https://atomfable.com/" class="brand-lockup flex items-center gap-2.5 shrink-0">
+      <a href="https://atomfable.com/zh/" class="brand-lockup flex items-center gap-2.5 shrink-0">
         <span class="brand-mark w-10 h-10 md:w-11 md:h-11 comic-border shrink-0" aria-hidden="true"></span>
         <span class="block leading-none">
           <span class="text-xl md:text-2xl font-black tracking-tight">
             AtomFable <span class="text-orange-600">Hi</span>
           </span>
-          <span class="header-sub block" id="header-sub">Hi Plaza · 0 messages</span>
+          <span class="header-sub block" id="header-sub">Hi 广场 · 共 0 条</span>
         </span>
       </a>
       <div class="flex items-center gap-2 sm:gap-3 shrink-0">
-        <nav class="lang-switch" aria-label="Language">
-          <a href="/" class="is-active" data-set-lang="en" lang="en">EN</a>
+        <nav class="lang-switch" aria-label="语言">
+          <a href="/" data-set-lang="en" lang="en">EN</a>
           <span class="text-gray-400" aria-hidden="true">|</span>
-          <a href="/zh/" data-set-lang="zh" lang="zh-CN">中文</a>
+          <a href="/zh/" class="is-active" data-set-lang="zh" lang="zh-CN">中文</a>
         </nav>
-        <a href="https://atomfable.com/" class="btn-comic-link">← Main</a>
+        <a href="https://atomfable.com/zh/" class="btn-comic-link">← 主站</a>
       </div>
     </div>
   </header>
 
   <main class="chat-layout flex-1 min-h-0">
     <div id="chat-scroll" class="chat-scroll chat-shell" tabindex="-1">
-      <p class="stream-loading hidden" id="stream-loading">Loading messages…</p>
-      <p class="stream-empty" id="stream-empty">Hi Plaza is quiet — be the first to say hi.</p>
+      <p class="stream-loading hidden" id="stream-loading">加载留言中…</p>
+      <p class="stream-empty" id="stream-empty">Hi 广场还空着，来抢第一条吧。</p>
       <div id="msg-stream" role="log" aria-live="polite" aria-relevant="additions"></div>
     </div>
 
-    <div class="compose-dock" role="region" aria-label="Say something on Hi Plaza">
+    <div class="compose-dock" role="region" aria-label="在 Hi 广场说两句">
       <div class="compose-inner">
         <form id="guestbook-form" novalidate>
           <p class="entry-source-hint hidden" id="entry-source-hint"></p>
           <div class="compose-nick-bar" id="nick-bar">
-            <span class="compose-nick-label">Nick</span>
-            <button type="button" class="nick-display" id="nick-display" title="Tap to edit nickname">Passerby</button>
-            <span class="nick-hint">· tap to edit</span>
-            <label for="nick" class="sr-only">Nick</label>
+            <span class="compose-nick-label">昵称</span>
+            <button type="button" class="nick-display" id="nick-display" title="点击修改昵称">路过的热心网友</button>
+            <span class="nick-hint">· 点击可改</span>
+            <label for="nick" class="sr-only">昵称</label>
             <input
               type="text"
               id="nick"
@@ -552,22 +552,22 @@
             />
           </div>
           <div class="compose-row">
-            <label for="content" class="sr-only">Message</label>
+            <label for="content" class="sr-only">内容</label>
             <textarea
               id="content"
               name="content"
               rows="2"
               maxlength="500"
               required
-              placeholder="Feedback, chatter, tool ideas — anything goes. Tell us what you'd like on AtomFable or Hi Plaza."
+              placeholder="提意见、灌水、闲聊都行～说说你想玩的工具，或给主站 / Hi 广场提个想法"
               class="compose-input"
             ></textarea>
-            <button type="submit" class="btn-send" id="btn-send" aria-label="Say hi">Say hi</button>
+            <button type="submit" class="btn-send" id="btn-send" aria-label="说两句">说两句</button>
           </div>
           <div class="compose-meta">
             <span><span id="char-count">0</span> / 500</span>
-            <span id="compose-status">Messages are saved in the cloud</span>
-            <button type="button" class="btn-admin-toggle" id="btn-admin-toggle">Admin</button>
+            <span id="compose-status">留言会保存在云端</span>
+            <button type="button" class="btn-admin-toggle" id="btn-admin-toggle">站长</button>
           </div>
         </form>
       </div>
@@ -576,7 +576,7 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-  <script>window.HI_PAGE_LANG = "en";</script>
+  <script>window.HI_PAGE_LANG = "zh";</script>
   <script src="/assets/hi-i18n.js"></script>
   <script src="/assets/hi-nick-bootstrap.js"></script>
   <script src="/assets/hi-app.js"></script>
