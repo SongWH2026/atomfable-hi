@@ -9,12 +9,28 @@ function json(res, status, body) {
 }
 
 function getSupabaseConfig() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = (process.env.SUPABASE_URL || "").trim();
+  const key = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
   if (!url || !key) {
     return null;
   }
   return { url: url.replace(/\/$/, ""), key };
+}
+
+function supabaseErrorHint(data) {
+  if (!data) return "数据库连接失败";
+  const msg = String(data.message || data.msg || data.error || "");
+  const code = String(data.code || "");
+  if (code === "PGRST205" || /hi_messages/i.test(msg) && /does not exist|schema cache/i.test(msg)) {
+    return "表 hi_messages 不存在，请在 Supabase SQL Editor 执行 messages.sql";
+  }
+  if (/jwt|invalid api key|unauthorized/i.test(msg) || code === "PGRST301") {
+    return "密钥无效，请用 Legacy 的 service_role（eyJ 开头）";
+  }
+  if (/permission denied/i.test(msg)) {
+    return "数据库权限不足，请检查 service_role 密钥";
+  }
+  return msg.slice(0, 120) || "数据库写入失败";
 }
 
 async function supabaseRequest(config, path, options = {}) {
@@ -152,7 +168,11 @@ module.exports = async function handler(req, res) {
         `&order=created_at.asc&limit=${MAX_MESSAGES}`;
       const result = await supabaseRequest(config, query);
       if (!result.ok) {
-        json(res, 500, { error: "load_failed", detail: result.data });
+        json(res, 500, {
+          error: "load_failed",
+          hint: supabaseErrorHint(result.data),
+          detail: result.data,
+        });
         return;
       }
       json(res, 200, { messages: (result.data || []).map(mapRow) });
@@ -216,7 +236,11 @@ module.exports = async function handler(req, res) {
       });
 
       if (!insertResult.ok || !Array.isArray(insertResult.data) || !insertResult.data[0]) {
-        json(res, 500, { error: "insert_failed", detail: insertResult.data });
+        json(res, 500, {
+          error: "insert_failed",
+          hint: supabaseErrorHint(insertResult.data),
+          detail: insertResult.data,
+        });
         return;
       }
 

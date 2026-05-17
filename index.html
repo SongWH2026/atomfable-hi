@@ -713,8 +713,11 @@
         const res = await fetch(API_MESSAGES);
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
+          console.error("GET /api/messages failed", res.status, data);
           if (data.error === "server_not_configured") {
             showToast("后端未配置：请在 Vercel 填 Supabase 环境变量");
+          } else if (data.hint) {
+            showToast(data.hint);
           } else {
             showToast("加载失败，稍后再试");
           }
@@ -847,12 +850,17 @@
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
+          console.error("POST /api/messages failed", res.status, data);
           if (data.error === "rate_limited") {
             showToast("发太快了，稍后再试");
           } else if (data.error === "turnstile_failed") {
             showToast("人机验证未通过");
           } else if (data.error === "server_not_configured") {
             showToast("后端未配置，请联系站长");
+          } else if (data.hint) {
+            showToast(data.hint);
+          } else if (data.error === "insert_failed") {
+            showToast("写入失败：请确认 Supabase 已执行建表 SQL");
           } else {
             showToast("发送失败，稍后再试");
           }
