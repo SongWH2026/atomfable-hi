@@ -127,6 +127,30 @@
     .msg-row.is-admin .msg-label {
       color: #ea580c;
     }
+    .msg-source a {
+      color: #ea580c;
+      font-weight: 800;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .msg-source a:hover {
+      color: #c2410c;
+    }
+    .msg-label-sep {
+      color: #d1d5db;
+      font-weight: 700;
+    }
+    .entry-source-hint {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #9ca3af;
+      margin-bottom: 0.45rem;
+    }
+    .entry-source-hint a {
+      color: #ea580c;
+      font-weight: 800;
+      text-decoration: underline;
+    }
     .bubble {
       border: 3px solid #111827;
       box-shadow: 4px 4px 0 #111827;
@@ -425,6 +449,7 @@
     <div class="compose-dock" role="region" aria-label="在 Hi 广场说两句">
       <div class="compose-inner">
         <form id="guestbook-form" novalidate>
+          <p class="entry-source-hint hidden" id="entry-source-hint"></p>
           <div class="compose-nick-bar" id="nick-bar">
             <span class="compose-nick-label">昵称</span>
             <button type="button" class="nick-display" id="nick-display" title="点击修改昵称"></button>
@@ -464,14 +489,22 @@
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
   <script>
+    const SOURCE_MAP = {
+      "main-zh": { label: "主站", url: "https://atomfable.com/zh/" },
+      "main-en": { label: "Main site", url: "https://atomfable.com/" },
+      base64: { label: "Base64 工具", url: "https://base64.atomfable.com/" },
+      image: { label: "图片压缩", url: "https://image.atomfable.com/" },
+    };
+    const ENTRY_SOURCE_KEY = "hi-entry-source";
+
     const SAMPLE_MESSAGES = [
       { floor: 1, nick: "AtomFable", admin: true, mine: false, content: "【站长】一楼留给官方：正式开门后会删掉这些假数据。", time: "5/13 00:00" },
-      { floor: 2, nick: "工具人", admin: false, mine: false, content: "Base64 那个工具好用，收藏了。期待更多沙雕小工具。", time: "5/14 09:45" },
+      { floor: 2, nick: "工具人", admin: false, mine: false, source: { label: "Base64 工具", url: "https://base64.atomfable.com/" }, content: "Base64 那个工具好用，收藏了。期待更多沙雕小工具。", time: "5/14 09:45" },
       { floor: 3, nick: "老网民", admin: false, mine: false, content: "左右分边这种布局顺眼，像聊天又不像微信那种绿泡泡。", time: "5/15 12:30" },
       { floor: 4, nick: "AtomFable", admin: true, mine: false, content: "【站长】Hi 广场 UI 按主站风格重做了，后端还没接。欢迎催更。", time: "5/16 18:00" },
       { floor: 5, nick: "路过网友", admin: false, mine: false, content: "匿名测试一条，应该在左边。", time: "昨天 21:03" },
-      { floor: 6, nick: "深夜打工人", admin: false, mine: false, content: "主站那个会跑的 e 太魔性了……", time: "昨天 02:14" },
-      { floor: 7, nick: "路过的热心网友520", admin: false, mine: true, content: "演示：自己发的在右边，默认昵称带随机数。", time: "刚刚" },
+      { floor: 6, nick: "深夜打工人", admin: false, mine: false, source: { label: "主站", url: "https://atomfable.com/zh/" }, content: "主站那个会跑的 e 太魔性了……", time: "昨天 02:14" },
+      { floor: 7, nick: "路过的热心网友520", admin: false, mine: true, source: { label: "主站", url: "https://atomfable.com/zh/" }, content: "演示：从主站点过来会显示「来自 主站」链接。", time: "刚刚" },
     ];
 
     let messages = [...SAMPLE_MESSAGES];
@@ -488,9 +521,66 @@
     const nickBar = document.getElementById("nick-bar");
     const nickDisplay = document.getElementById("nick-display");
     const nickInput = document.getElementById("nick");
+    const entrySourceHint = document.getElementById("entry-source-hint");
     const NICK_PREFIX = "路过的热心网友";
     const NICK_STORAGE_KEY = "hi-display-nick";
     let toastTimer;
+
+    function resolveSourceFromCode(code) {
+      const key = (code || "").trim().toLowerCase();
+      if (!key || !SOURCE_MAP[key]) return null;
+      return { id: key, label: SOURCE_MAP[key].label, url: SOURCE_MAP[key].url };
+    }
+
+    function resolveSourceFromReferrer() {
+      try {
+        const ref = document.referrer;
+        if (!ref) return null;
+        const host = new URL(ref).hostname.replace(/^www\./, "");
+        if (host === "atomfable.com") {
+          return ref.includes("/zh")
+            ? { id: "referrer-main-zh", label: "主站", url: "https://atomfable.com/zh/" }
+            : { id: "referrer-main-en", label: "Main site", url: "https://atomfable.com/" };
+        }
+        if (host === "base64.atomfable.com") {
+          return { id: "referrer-base64", label: "Base64 工具", url: "https://base64.atomfable.com/" };
+        }
+        if (host === "image.atomfable.com") {
+          return { id: "referrer-image", label: "图片压缩", url: "https://image.atomfable.com/" };
+        }
+      } catch (_) {}
+      return null;
+    }
+
+    function detectEntrySource() {
+      const fromParam = new URLSearchParams(location.search).get("from");
+      return resolveSourceFromCode(fromParam) || resolveSourceFromReferrer();
+    }
+
+    function getCurrentSource() {
+      try {
+        const raw = sessionStorage.getItem(ENTRY_SOURCE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.url && parsed.label) return parsed;
+        }
+      } catch (_) {}
+      return detectEntrySource();
+    }
+
+    function persistEntrySource(source) {
+      if (!source) return;
+      try { sessionStorage.setItem(ENTRY_SOURCE_KEY, JSON.stringify(source)); } catch (_) {}
+    }
+
+    function updateEntrySourceHint() {
+      const source = getCurrentSource();
+      if (!source || !entrySourceHint) return;
+      const label = escapeHtml(source.label);
+      const url = escapeHtml(source.url);
+      entrySourceHint.innerHTML = `你这条将显示为：来自 <a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+      entrySourceHint.classList.remove("hidden");
+    }
 
     function randomGuestNick() {
       const n = Math.floor(1000 + Math.random() * 9000);
@@ -574,15 +664,23 @@
       });
     }
 
+    function renderSourcePrefix(m) {
+      if (!m.source || !m.source.url || !m.source.label) return "";
+      const label = escapeHtml(m.source.label);
+      const url = escapeHtml(m.source.url);
+      return `<span class="msg-source">来自 <a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a></span><span class="msg-label-sep" aria-hidden="true"> · </span>`;
+    }
+
     function renderBubble(m) {
       const side = m.mine ? "is-mine" : "is-other";
       const adminCls = m.admin && !m.mine ? " is-admin" : "";
       const label = escapeHtml(m.nick);
+      const sourcePrefix = renderSourcePrefix(m);
       return `
         <div class="msg-item">
         <div class="msg-row ${side}${adminCls}" role="article" aria-label="${escapeHtml(m.nick)}：${escapeHtml(m.content).slice(0, 24)}">
           <div class="msg-wrap">
-            <div class="msg-label">${label} · #${m.floor}</div>
+            <div class="msg-label">${sourcePrefix}${label} · #${m.floor}</div>
             <div class="bubble">${escapeHtml(m.content)}</div>
               <time class="msg-time">${escapeHtml(m.time)}</time>
             </div>
@@ -622,6 +720,12 @@
       contentEl.style.height = `${Math.max(minH, Math.min(contentEl.scrollHeight, 144))}px`;
     }
 
+    (function initEntrySource() {
+      const detected = detectEntrySource();
+      if (detected) persistEntrySource(detected);
+      updateEntrySourceHint();
+    })();
+
     renderMessages(messages);
 
     contentEl.addEventListener("input", () => {
@@ -651,6 +755,7 @@
         mine: true,
         content: text,
         time: formatNow(),
+        source: getCurrentSource() || undefined,
       };
       messages = [...messages, msg];
       renderMessages(messages);
