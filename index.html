@@ -191,6 +191,42 @@
     .msg-row.is-other .msg-time {
       text-align: left;
     }
+    .msg-actions {
+      margin-top: 0.35rem;
+      display: flex;
+      gap: 0.5rem;
+    }
+    .msg-row.is-mine .msg-actions {
+      justify-content: flex-end;
+    }
+    .msg-delete {
+      font-size: 0.7rem;
+      font-weight: 800;
+      color: #b91c1c;
+      background: #fff;
+      border: 2px solid #b91c1c;
+      box-shadow: 2px 2px 0 #b91c1c;
+      border-radius: 2px;
+      padding: 0.1rem 0.45rem;
+      cursor: pointer;
+    }
+    .msg-delete:hover {
+      background: #fef2f2;
+    }
+    .btn-admin-toggle {
+      font-size: 0.65rem;
+      font-weight: 800;
+      color: #9ca3af;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+    }
+    .btn-admin-toggle.is-on {
+      color: #ea580c;
+    }
 
     .header-sub {
       font-size: 0.7rem;
@@ -494,6 +530,7 @@
           <div class="compose-meta">
             <span><span id="char-count">0</span> / 500</span>
             <span id="compose-status">留言会保存在云端</span>
+            <button type="button" class="btn-admin-toggle" id="btn-admin-toggle">站长</button>
           </div>
         </form>
       </div>
@@ -531,9 +568,11 @@
     const NICK_PREFIX = "路过的热心网友";
     const NICK_STORAGE_KEY = "hi-display-nick";
     const CLIENT_TOKEN_KEY = "hi-client-token";
+    const ADMIN_SECRET_KEY = "hi-admin-secret";
     const API_MESSAGES = "/api/messages";
     let toastTimer;
     let myClientToken = "";
+    let adminUnlocked = false;
 
     function resolveSourceFromCode(code) {
       const key = (code || "").trim().toLowerCase();
@@ -697,6 +736,7 @@
           ? { label: row.source_label, url: row.source_url }
           : null;
       return {
+        id: row.id,
         floor: row.id,
         nick: row.nick,
         admin: Boolean(row.is_admin),
@@ -754,18 +794,108 @@
       return `<span class="msg-source">来自 <a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a></span><span class="msg-label-sep" aria-hidden="true"> · </span>`;
     }
 
+    function getAdminSecret() {
+      try {
+        return localStorage.getItem(ADMIN_SECRET_KEY) || "";
+      } catch (_) {
+        return "";
+      }
+    }
+
+    function setAdminUnlocked(on) {
+      adminUnlocked = Boolean(on && getAdminSecret());
+      const btn = document.getElementById("btn-admin-toggle");
+      if (btn) {
+        btn.classList.toggle("is-on", adminUnlocked);
+        btn.textContent = adminUnlocked ? "站长 · 已开启" : "站长";
+      }
+      renderMessages(messages);
+    }
+
+    function promptAdminSecret() {
+      if (adminUnlocked) {
+        if (confirm("退出站长模式？删除按钮将隐藏。")) {
+          try {
+            localStorage.removeItem(ADMIN_SECRET_KEY);
+          } catch (_) {}
+          setAdminUnlocked(false);
+          showToast("已退出站长模式");
+        }
+        return;
+      }
+      const input = prompt("输入站长删除口令（在 Vercel 配置的 HI_ADMIN_SECRET）：");
+      if (input === null) return;
+      const secret = input.trim();
+      if (!secret) {
+        showToast("口令不能为空");
+        return;
+      }
+      try {
+        localStorage.setItem(ADMIN_SECRET_KEY, secret);
+      } catch (_) {
+        showToast("无法保存口令");
+        return;
+      }
+      setAdminUnlocked(true);
+      showToast("站长模式已开启，可删留言");
+    }
+
+    async function deleteMessage(id) {
+      if (!adminUnlocked) return;
+      if (!confirm(`确定删除 #${id} 这条留言？`)) return;
+      const payload = {
+        id,
+        nick: getSendNick(),
+        admin_secret: getAdminSecret(),
+      };
+      try {
+        const res = await fetch(API_MESSAGES, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (data.error === "admin_forbidden") {
+            showToast("删除口令错误");
+            try {
+              localStorage.removeItem(ADMIN_SECRET_KEY);
+            } catch (_) {}
+            setAdminUnlocked(false);
+          } else if (data.error === "admin_nick_mismatch") {
+            showToast("昵称需与 HI_ADMIN_NICK 一致");
+          } else if (data.error === "not_found") {
+            showToast("留言不存在");
+            await loadMessages();
+          } else {
+            showToast(data.hint || "删除失败");
+          }
+          return;
+        }
+        messages = messages.filter((m) => m.id !== id);
+        renderMessages(messages);
+        showToast("已删除");
+      } catch (_) {
+        showToast("网络异常，删除失败");
+      }
+    }
+
     function renderBubble(m) {
       const side = m.mine ? "is-mine" : "is-other";
       const adminCls = m.admin && !m.mine ? " is-admin" : "";
       const label = escapeHtml(m.nick);
       const sourcePrefix = renderSourcePrefix(m);
+      const deleteBtn = adminUnlocked
+        ? `<div class="msg-actions"><button type="button" class="msg-delete" data-delete-id="${m.id}">删除</button></div>`
+        : "";
       return `
-        <div class="msg-item">
+        <div class="msg-item" data-msg-id="${m.id}">
         <div class="msg-row ${side}${adminCls}" role="article" aria-label="${escapeHtml(m.nick)}：${escapeHtml(m.content).slice(0, 24)}">
           <div class="msg-wrap">
             <div class="msg-label">${sourcePrefix}${label} · #${m.floor}</div>
             <div class="bubble">${escapeHtml(m.content)}</div>
               <time class="msg-time">${escapeHtml(m.time)}</time>
+              ${deleteBtn}
             </div>
           </div>
           <hr class="msg-divider" />
@@ -810,6 +940,21 @@
     })();
 
     myClientToken = getClientToken();
+    if (getAdminSecret()) {
+      adminUnlocked = true;
+      const adminBtn = document.getElementById("btn-admin-toggle");
+      if (adminBtn) {
+        adminBtn.classList.add("is-on");
+        adminBtn.textContent = "站长 · 已开启";
+      }
+    }
+    document.getElementById("btn-admin-toggle")?.addEventListener("click", promptAdminSecret);
+    msgStream.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-delete-id]");
+      if (!btn) return;
+      const id = Number(btn.getAttribute("data-delete-id"));
+      if (Number.isInteger(id) && id > 0) deleteMessage(id);
+    });
     loadMessages();
 
     contentEl.addEventListener("input", () => {

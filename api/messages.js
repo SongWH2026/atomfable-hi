@@ -1,3 +1,5 @@
+const crypto = require("crypto");
+
 const MAX_MESSAGES = 300;
 const RATE_LIMIT_COUNT = 8;
 const RATE_LIMIT_MINUTES = 60;
@@ -140,6 +142,27 @@ function isValidHttpUrl(value) {
   }
 }
 
+function verifyAdminSecret(provided) {
+  const expected = (process.env.HI_ADMIN_SECRET || "").trim();
+  const given = String(provided || "").trim();
+  if (!expected || !given) return false;
+  const a = Buffer.from(given, "utf8");
+  const b = Buffer.from(expected, "utf8");
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
+
+function isAdminNick(nick) {
+  const adminNick = sanitizeText(process.env.HI_ADMIN_NICK, 20);
+  return Boolean(adminNick && nick === adminNick);
+}
+
+function parseMessageId(value) {
+  const id = Number(value);
+  if (!Number.isInteger(id) || id < 1) return null;
+  return id;
+}
+
 function getClientIp(req) {
   const forwarded = req.headers["x-forwarded-for"];
   if (typeof forwarded === "string" && forwarded.length) {
@@ -239,8 +262,7 @@ module.exports = async function handler(req, res) {
         }
       }
 
-      const adminNick = sanitizeText(process.env.HI_ADMIN_NICK, 20);
-      const isAdmin = Boolean(adminNick && nick === adminNick);
+      const isAdmin = isAdminNick(nick);
 
       const insertBody = {
         nick,
@@ -267,6 +289,49 @@ module.exports = async function handler(req, res) {
       }
 
       json(res, 201, { message: mapRow(insertResult.data[0]) });
+      return;
+    }
+
+    if (req.method === "DELETE") {
+      const body = await readBody(req);
+      const id = parseMessageId(body.id);
+      const nick = sanitizeText(body.nick, 20);
+
+      if (!id) {
+        json(res, 400, { error: "invalid_id" });
+        return;
+      }
+      if (!verifyAdminSecret(body.admin_secret)) {
+        json(res, 403, { error: "admin_forbidden" });
+        return;
+      }
+      if (!isAdminNick(nick)) {
+        json(res, 403, { error: "admin_nick_mismatch" });
+        return;
+      }
+
+      const deleteResult = await supabaseRequest(
+        config,
+        `hi_messages?id=eq.${id}`,
+        { method: "DELETE", prefer: "return=representation" }
+      );
+
+      if (!deleteResult.ok) {
+        json(res, 500, {
+          error: "delete_failed",
+          hint: supabaseErrorHint(deleteResult.data),
+        });
+        return;
+      }
+
+      const deleted =
+        Array.isArray(deleteResult.data) && deleteResult.data.length > 0;
+      if (!deleted) {
+        json(res, 404, { error: "not_found" });
+        return;
+      }
+
+      json(res, 200, { ok: true, id });
       return;
     }
 
